@@ -1,0 +1,133 @@
+.container {
+  max-width: 11366px;
+  margin: 0 auto;
+  padding: 20px 20px 0px 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+}
+
+.heading {
+  text-align: center;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.formGroup {
+  margin-bottom: 15px;
+}
+
+.label {
+  margin-bottom: 5px;
+  font-weight: bold;
+  display: block;
+  color: #555;
+}
+
+.infolabel {
+
+  margin-bottom: 5px;
+  font-weight: bold;
+  display: block;
+  color: red;
+  text-align: center;
+}
+
+.input,
+.textArea,
+.textAreaSmall {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.longInput {
+  width: 100%;
+}
+
+.textArea {
+  height: 130px;
+}
+
+.textAreaSmall {
+  height: 50px;
+}
+
+.readOnlyInput {
+  background-color: #f9f9f9;
+}
+
+.submitButton {
+  padding: 10px 15px;
+  background-color: #0070f3;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.submitButton:hover {
+  background-color: #005bb5;
+}
+
+.lblLink {
+  margin-bottom: 10px;
+  font-size: small;
+  text-decoration: underline;
+  color: red;
+  text-align: center;
+  width: 100vw;
+  padding-right: 50px;
+  border: 0px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.copyCode {
+  cursor: pointer;
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  bottom: 10px;
+  color: #4c4c4c;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.copyCode:hover {
+  color: #a14208;
+}
+
+.codeWrap {
+
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.labelContainer {
+  display: flex;
+  justify-content: space-between;
+  /*align-items: center;*/
+}
+
+.toggleLink {
+  color: #0070f3;
+  /* Link color */
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.toggleLink:hover {
+  color: #089cf8;
+  /* Hover color */
+}

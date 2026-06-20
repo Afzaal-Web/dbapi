@@ -1,0 +1,24 @@
+{
+  "name": "lambda-api-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.620.0",
+    "axios": "^1.7.2",
+    "fast-xml-parser": "^5.9.3",
+    "mysql2": "^3.22.5",
+    "next": "14.2.5",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5"
+  }
+}
