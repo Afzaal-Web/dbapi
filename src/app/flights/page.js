@@ -21,7 +21,6 @@ const FlightViewApiTest = () => {
   const [infoLabel, setInfoLabel] = useState("");
   const [actionCodes, setActionCodes] = useState([]);
   const [selectedActionCode, setSelectedActionCode] = useState("");
-  const [selectedEnvironmentStage, setSelectedEnvironmentStage] = useState("D");
 
   const showInProgress = () => setInProgress(true);
   const hideInProgress = () => setInProgress(false);
@@ -50,17 +49,6 @@ const FlightViewApiTest = () => {
     fetchActionCodes();
   }, []);
 
-  const handleEnvironmentStageChange = async (e) => {
-    const selectedStage = e.target.value;
-    setSelectedEnvironmentStage(selectedStage);
-
-    if (selectedStage == "S")
-      setGatewayApiUrl(process.env.NEXT_PUBLIC_API_FLIGHTVIEW_URL_STAG);
-    else if (selectedStage == "P")
-      setGatewayApiUrl(process.env.NEXT_PUBLIC_API_FLIGHTVIEW_URL_PROD);
-    else setGatewayApiUrl(process.env.NEXT_PUBLIC_API_FLIGHTVIEW_URL_DEVP);
-  };
-
   const handleActionCodeChange = async (e) => {
     const selectedCode = e.target.value;
     setSelectedActionCode(selectedCode);
@@ -76,43 +64,37 @@ const FlightViewApiTest = () => {
     }
   };
 
-  const toggleResponseView = () => {
-    setShowRaw(!showRaw);
-    setGatewayApiResponseText(
-      showRaw ? beautifyJson(rawGatewayApiResponse) : rawGatewayApiResponse
-    );
-  };
-  const preprocessJson = (jsonString) => {
-    try {
-      //Parsing is not required for FlightView responses. Let's just return the jsonString as is:
-      return jsonString;
+   const toggleResponseView = () => {
+  const nextShowRaw = !showRaw;
+  setShowRaw(nextShowRaw);
 
-      //return JSON.parse(jsonString); // Parse the raw escaped string into a JSON object
-    } catch (error) {
-      console.error("Error parsing raw JSON string:", error);
-      return jsonString; // Return as-is if parsing fails
+  setGatewayApiResponseText(
+    nextShowRaw
+      ? String(rawGatewayApiResponse)
+      : beautifyJson(rawGatewayApiResponse)
+  );
+};
+
+  const beautifyJson = (value) => {
+  try {
+    let json = value;
+
+    // Parse repeatedly while response is still a JSON string
+    while (typeof json === "string") {
+      const parsed = JSON.parse(json);
+
+      // Stop if parsing does not change the value
+      if (parsed === json) break;
+
+      json = parsed;
     }
-  };
-  const beautifyJson = (jsonString) => {
-    try {
-      // Handle if input is already an object
-      let jsonToProcess = typeof jsonString === 'string' 
-        ? jsonString 
-        : JSON.stringify(jsonString, null, 2);
-      
-      const unescapedJson =
-        selectedEnvironmentStage == "D"
-          ? preprocessJson(jsonToProcess)
-          : jsonToProcess;
-      return JSON.stringify(JSON.parse(unescapedJson), null, 2);
-    } catch (error) {
-      console.error("Error beautifying JSON:", error);
-      // Return as formatted string regardless of input type
-      return typeof jsonString === 'string' 
-        ? jsonString 
-        : JSON.stringify(jsonString, null, 2);
-    }
-  };
+
+    return JSON.stringify(json, null, 2);
+  } catch (error) {
+    console.error("Error beautifying JSON:", error);
+    return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  }
+};
 
   const handleCopy = () => {
     navigator.clipboard
@@ -123,7 +105,16 @@ const FlightViewApiTest = () => {
       })
       .catch((err) => console.error("Failed to copy: ", err));
   };
-
+const handleClear = () => {
+  setSelectedActionCode("");
+  setGatewayApiRequest("");
+  setGatewayApiRequestNotes("");
+  setGatewayApiResponseStatus("");
+  setGatewayApiResponseText("");
+  setRawGatewayApiResponse("");
+  setInfoLabel("");
+  setShowRaw(false);
+};
   const handleSubmit = async (e) => {
     e.preventDefault();
     showInProgress();
@@ -189,47 +180,16 @@ const callApiGateway = async (url, requestPayload) => {
   }
 };
 
-
   return (
     <div className={styles.container}>
-      <h1 className={styles.heading}>DBAPI Test</h1>
+      <h1 className={styles.heading}>FlightView API Test</h1>
       <div className={styles.lblLink}>
-        <a href="/">Gateway API</a>
+        <a href="/">DBAPI</a>
         <Link href="/database_logs">View Database Logs</Link>
       </div>
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label className={styles.infolabel}>{infoLabel}</label>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="environmentStage" className={styles.label}>
-            Environment Stage
-          </label>
-          <select
-            id="environmentStage"
-            name="environmentStage"
-            value={selectedEnvironmentStage}
-            onChange={handleEnvironmentStageChange}
-            className={`${styles.input} ${styles.longInput}`}
-          >
-            <option value="D">Development</option>
-            <option value="S">Staging</option>
-          </select>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="txtGatewayAPIURL" className={styles.label}>
-            FlightView API URL
-          </label>
-          <input
-            type="text"
-            id="txtGatewayAPIURL"
-            name="txtGatewayAPIURL"
-            value={gatewayApiUrl}
-            onChange={(e) => setGatewayApiUrl(e.target.value)}
-            className={`${styles.input} ${styles.longInput}`}
-          />
         </div>
 
         <div className={styles.formGroup}>
@@ -279,6 +239,28 @@ const callApiGateway = async (url, requestPayload) => {
             className={styles.textAreaSmall}
           />
         </div>
+         <div className={styles.formGroup}>
+  <div className={styles.buttonRow}>
+    <button
+      type="submit"
+      name="btnSubmit"
+      className={styles.submitButton}
+    >
+      {inProgress ? "Making Request..." : "Make API Request"}
+    </button>
+
+    {gatewayApiResponseText && (
+      <button
+        type="button"
+        onClick={handleClear}
+        className={styles.clearButton}
+      >
+        Clear Input Fields
+      </button>
+    )}
+  </div>
+        </div>
+       
         <div className={styles.formGroup}>
           <label htmlFor="txtGatewayAPIResponseStatus" className={styles.label}>
             FlightView API Response Status
@@ -334,17 +316,8 @@ const callApiGateway = async (url, requestPayload) => {
             </pre>
           </div>
         </div>
-        <div className={styles.formGroup}>
-          <button
-            type="submit"
-            name="btnSubmit"
-            className={styles.submitButton}
-          >
-            {inProgress ? "Making Request..." : "Make API Request"}
-          </button>
-        </div>
         <div className={styles.lblLink}>
-          <Link href="mailto:kazimbukhari@gmail.com">Report Issues</Link>
+          <Link href="mailto:etech.sarmad@gmail.com">Report Issues</Link>
         </div>
       </form>
     </div>

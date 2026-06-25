@@ -21,12 +21,9 @@ const GatewayApiTest = () => {
   const [infoLabel, setInfoLabel] = useState("");
   const [actionCodes, setActionCodes] = useState([]);
   const [selectedActionCode, setSelectedActionCode] = useState("");
-  const [selectedEnvironmentStage, setSelectedEnvironmentStage] = useState("D");
 
   const showInProgress = () => setInProgress(true);
   const hideInProgress = () => setInProgress(false);
-  const showGettingToken = () => setGettingToken(true);
-  const hideGettingToken = () => setGettingToken(false);
 
   const [copied, setCopied] = useState(false);
 
@@ -52,17 +49,6 @@ const GatewayApiTest = () => {
     fetchActionCodes();
   }, []);
 
-  const handleEnvironmentStageChange = async (e) => {
-    const selectedStage = e.target.value;
-    setSelectedEnvironmentStage(selectedStage);
-
-    if (selectedStage == "S")
-      setGatewayApiUrl(process.env.NEXT_PUBLIC_DBAPI_STAG_URL);
-    else if (selectedStage == "P")
-      setGatewayApiUrl(process.env.NEXT_PUBLIC_DBAPI_PROD_URL);
-    else setGatewayApiUrl(process.env.NEXT_PUBLIC_DBAPI_DEV_URL);
-  };
-
   const handleActionCodeChange = async (e) => {
     const selectedCode = e.target.value;
     setSelectedActionCode(selectedCode);
@@ -79,36 +65,35 @@ const GatewayApiTest = () => {
   };
 
   const toggleResponseView = () => {
-    setShowRaw(!showRaw);
-    setGatewayApiResponseText(
-      showRaw ? beautifyJson(rawGatewayApiResponse) : rawGatewayApiResponse
-    );
-  };
-  const preprocessJson = (jsonString) => {
-    try {
-      return JSON.parse(jsonString); // Parse the raw escaped string into a JSON object
-    } catch (error) {
-      console.error("Error parsing raw JSON string:", error);
-      return jsonString; // Return as-is if parsing fails
+  const nextShowRaw = !showRaw;
+  setShowRaw(nextShowRaw);
+
+  setGatewayApiResponseText(
+    nextShowRaw
+      ? String(rawGatewayApiResponse)
+      : beautifyJson(rawGatewayApiResponse)
+  );
+};
+  const beautifyJson = (value) => {
+  try {
+    let json = value;
+
+    // Parse repeatedly while response is still a JSON string
+    while (typeof json === "string") {
+      const parsed = JSON.parse(json);
+
+      // Stop if parsing does not change the value
+      if (parsed === json) break;
+
+      json = parsed;
     }
-  };
-  const beautifyJson = (jsonString) => {
-    try {
-      // Handle non-string inputs
-      if (typeof jsonString !== 'string') {
-        jsonString = JSON.stringify(jsonString);
-      }
-      const unescapedJson =
-        selectedEnvironmentStage == "D"
-          ? preprocessJson(jsonString)
-          : jsonString;
-      return JSON.stringify(JSON.parse(unescapedJson), null, 2);
-    } catch (error) {
-      console.error("Error beautifying JSON:", error);
-      // Return as string regardless of input type
-      return typeof jsonString === 'string' ? jsonString : JSON.stringify(jsonString);
-    }
-  };
+
+    return JSON.stringify(json, null, 2);
+  } catch (error) {
+    console.error("Error beautifying JSON:", error);
+    return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  }
+};
 
   const handleCopy = () => {
     navigator.clipboard
@@ -119,6 +104,17 @@ const GatewayApiTest = () => {
       })
       .catch((err) => console.error("Failed to copy: ", err));
   };
+
+const handleClear = () => {
+  setSelectedActionCode("");
+  setGatewayApiRequest("");
+  setGatewayApiRequestNotes("");
+  setGatewayApiResponseStatus("");
+  setGatewayApiResponseText("");
+  setRawGatewayApiResponse("");
+  setInfoLabel("");
+  setShowRaw(false);
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -133,17 +129,13 @@ const GatewayApiTest = () => {
     showInProgress();
 
     try {
-      let info = "";
-
-      // For DBAPI, we don't use authentication tokens, we send the request directly
-      const isDBAPI = gatewayApiUrl.includes("DBAPI");
+      let info = ""; 
 
       // Step 2: Make a request to DBAPI or API Gateway
-      const apiResponse = await callApiGateway(
-        gatewayApiUrl,
-        gatewayApiRequest,
-        isDBAPI
-      );
+      const apiResponse = await callDBAPI(
+                                          gatewayApiUrl,
+                                          gatewayApiRequest
+                                        );
       setGatewayApiResponseStatus(apiResponse.status);
       setRawGatewayApiResponse(apiResponse.text); // Save raw response
       setGatewayApiResponseText(beautifyJson(apiResponse.text)); // Save beautified response
@@ -166,99 +158,57 @@ const GatewayApiTest = () => {
     }
   };
 
-  const callApiGateway = async (url, requestPayload, isDBAPI = false) => {
-    try {
-      let data;
-      let headers;
+ const callDBAPI = async (url, requestPayload) => {
+  try {
+    let dbapiPayload =
+      typeof requestPayload === "string"
+        ? JSON.parse(requestPayload)
+        : requestPayload;
 
-      if (isDBAPI) {
-        // For DBAPI, use backend proxy at /api/dbapi
-        // Parse the JSON request payload to extract DBAPI fields
-        let dbapiPayload;
-        try {
-          dbapiPayload = typeof requestPayload === 'string' ? JSON.parse(requestPayload) : requestPayload;
-        } catch (e) {
-          // If payload can't be parsed, try to use it as default DBAPI payload
-          dbapiPayload = {
-            ActionCode: "SPAGESMENU",
-            ViewName: "VIEWPAGE",
-            ClientIP: "::1",
-            JsonReq: requestPayload,
-            Notes: "1"
-          };
-        }
+    const jData = dbapiPayload.JsonReq?.JData || {};
+    const jMetaData = dbapiPayload.JsonReq?.JMetaData || {};
+    const jHeader = dbapiPayload.JsonReq?.JHeader || {};
 
-        // Create request for backend proxy - always use correct JsonReq structure per developer spec
-        // Extract JData from the selected payload if it exists
-        const jData = dbapiPayload.JsonReq?.JData || {};
-        const jMetaData = dbapiPayload.JsonReq?.JMetaData || {};
-        const jHeader = dbapiPayload.JsonReq?.JHeader || {};
+    const data = {
+      ActionCode: dbapiPayload.ActionCode,
+      ViewName: dbapiPayload.ViewName,
+      ClientIP: dbapiPayload.ClientIP,
+      JsonReq: {
+        JHeader: {
+          ...jHeader,
+          ViewName: dbapiPayload.ViewName || jHeader.ViewName,
+          ActionCode: dbapiPayload.ActionCode || jHeader.ActionCode,
+          RequestedURL: url,
+        },
+        JMetaData: jMetaData,
+        JData: jData,
+      },
+      Notes: dbapiPayload.Notes || "1",
+      dbapiUrl: url,
+    };
 
-        data = {
-          ActionCode: dbapiPayload.ActionCode || 'SPAGESMENU',
-          ViewName: dbapiPayload.ViewName || dbapiPayload.PageName || 'VIEWPAGE',
-          ClientIP: dbapiPayload.ClientIP || '::1',
-          JsonReq: {
-            JHeader: {
-              ...jHeader, // Use the JHeader from payload (which has APILogin, APIPassword, etc.)
-              ViewName: dbapiPayload.ViewName || dbapiPayload.PageName || jHeader.ViewName || "VIEWPAGE",
-              ActionCode: dbapiPayload.ActionCode || jHeader.ActionCode || "SPAGESMENU",
-              RequestedURL: url,
-            },
-            JMetaData: jMetaData,
-            JData: jData,
-          },
-          Notes: dbapiPayload.Notes || "1",
-          dbapiUrl: url, // Pass the original URL
-        };
+    const response = await axios.post("/api/dbapi", data, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      responseType: "json",
+    });
 
-        headers = {
-          "Content-Type": "application/json",
-        };
+    return response.data;
+  } catch (error) {
+    let errMsg = error.response ? error.response.data : error.message;
 
-        // Log what we're sending
-        console.log("Frontend sending to /api/dbapi:", data);
-
-        // Call backend proxy instead of DBAPI directly
-        const response = await axios.post("/api/dbapi", data, {
-          headers: headers,
-          responseType: "json",
-        });
-
-        return response.data; // Backend returns { status, text, success }
-      } else {
-        // Format request for API Gateway (JSON)
-        data = requestPayload;
-        headers = {
-          "Content-Type": "application/json",
-        };
-
-        const response = await axios.post(url, data, {
-          headers: headers,
-          responseType: "text",
-        });
-
-        return {
-          status: `${response.status} ${response.statusText}`,
-          text: response.data,
-        };
-      }
-    } catch (error) {
-      console.error(
-        "Error details:",
-        error.response ? error.response.data : error.message
-      );
-      let errMsg = error.response ? error.response.data : error.message;
-      // Ensure errMsg is always a string
-      if (typeof errMsg === 'object') {
-        errMsg = JSON.stringify(errMsg, null, 2);
-      }
-      return {
-        status: `${error.response?.status || "Error"}`,
-        text: String(errMsg),
-      };
+    if (typeof errMsg === "object") {
+      errMsg = JSON.stringify(errMsg, null, 2);
     }
-  };
+
+    return {
+      status: `${error.response?.status || "Error"}`,
+      text: String(errMsg),
+      success: false,
+    };
+  }
+};
 
   return (
     <div className={styles.container}>
@@ -270,36 +220,6 @@ const GatewayApiTest = () => {
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label className={styles.infolabel}>{infoLabel}</label>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="environmentStage" className={styles.label}>
-            Environment Stage
-          </label>
-          <select
-            id="environmentStage"
-            name="environmentStage"
-            value={selectedEnvironmentStage}
-            onChange={handleEnvironmentStageChange}
-            className={`${styles.input} ${styles.longInput}`}
-          >
-            <option value="D">Development</option>
-            <option value="S">Staging</option>
-          </select>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="txtGatewayAPIURL" className={styles.label}>
-            Gateway API URL
-          </label>
-          <input
-            type="text"
-            id="txtGatewayAPIURL"
-            name="txtGatewayAPIURL"
-            value={gatewayApiUrl}
-            onChange={(e) => setGatewayApiUrl(e.target.value)}
-            className={`${styles.input} ${styles.longInput}`}
-          />
         </div>
 
         <div className={styles.formGroup}>
@@ -349,6 +269,29 @@ const GatewayApiTest = () => {
             className={styles.textAreaSmall}
           />
         </div>
+        
+        <div className={styles.formGroup}>
+  <div className={styles.buttonRow}>
+    <button
+      type="submit"
+      name="btnSubmit"
+      className={styles.submitButton}
+    >
+      {inProgress ? "Making Request..." : "Make API Request"}
+    </button>
+
+    {gatewayApiResponseText && (
+      <button
+        type="button"
+        onClick={handleClear}
+        className={styles.clearButton}
+      >
+        Clear Input Fields
+      </button>
+    )}
+  </div>
+        </div>
+       
         <div className={styles.formGroup}>
           <label htmlFor="txtGatewayAPIResponseStatus" className={styles.label}>
             Gateway API Response Status
@@ -404,17 +347,8 @@ const GatewayApiTest = () => {
             </pre>
           </div>
         </div>
-        <div className={styles.formGroup}>
-          <button
-            type="submit"
-            name="btnSubmit"
-            className={styles.submitButton}
-          >
-            {inProgress ? "Making Request..." : "Make API Request"}
-          </button>
-        </div>
         <div className={styles.lblLink}>
-          <Link href="mailto:kazimbukhari@gmail.com">Report Issues</Link>
+          <Link href="mailto:etech.sarmad@gmail.com">Report Issues</Link>
         </div>
       </form>
     </div>

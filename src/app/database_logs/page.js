@@ -1,526 +1,283 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import styles from "../page.module.css";
+import { useState } from "react";
+import styles from "./page.module.css";
 import axios from "axios";
 import Link from "next/link";
+import { jsonrepair } from "jsonrepair";
 
-const GatewayApiTest = () => {
-  const [gatewayApiUrl, setGatewayApiUrl] = useState(
-    process.env.NEXT_PUBLIC_DBAPI_DEV_URL
-  );
-  const [gatewayApiRequest, setGatewayApiRequest] = useState();
-  const [gatewayApiRequestNotes, setGatewayApiRequestNotes] = useState();
-  const [gatewayApiResponseStatus, setGatewayApiResponseStatus] = useState("");
-  const [gatewayApiResponseText, setGatewayApiResponseText] = useState("");
-  const [rawGatewayApiResponse, setRawGatewayApiResponse] = useState(""); // To store raw response
-  const [showRaw, setShowRaw] = useState(false); // Toggle between raw and beautified view
+const DatabaseViewer = () => {
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [limit, setLimit] = useState("50");
+  const [modalContent, setModalContent] = useState("");
+const [showModal, setShowModal] = useState(false);
 
+  const [responseStatus, setResponseStatus] = useState("");
   const [inProgress, setInProgress] = useState(false);
 
-  const [infoLabel, setInfoLabel] = useState("");
-  const [actionCodes, setActionCodes] = useState([]);
-  const [selectedActionCode, setSelectedActionCode] = useState("");
-  const [selectedEnvironmentStage, setSelectedEnvironmentStage] = useState("D");
-  const [tableData, setTableData] = useState([
-    {
-      row_id: 1,
-      logging_object: "FLIGHT_BOOKING",
-      from_app_name: "MobileApp",
-      action_code: "S.DATABASE.LOGS",
-      client_ip: "192.168.1.100",
-      latitude: "40.7128",
-      longitude: "-74.0060",
-      user_id: "USER001",
-      trip_number: "TRIP12345",
-      device_info: "iPhone12",
-      json_request: '{"booking_id": "B123"}',
-      request_time: "2026-06-20 10:30:45",
-      response_time: "2026-06-20 10:30:50",
-      action_status: "SUCCESS",
-      failure_reason: "",
-      log_time: "2026-06-20 10:30:51"
-    },
-    {
-      row_id: 2,
-      logging_object: "FLIGHT_SEARCH",
-      from_app_name: "WebApp",
-      action_code: "S.DATABASE.LOGS",
-      client_ip: "192.168.1.101",
-      latitude: "34.0522",
-      longitude: "-118.2437",
-      user_id: "USER002",
-      trip_number: "TRIP12346",
-      device_info: "Chrome/Desktop",
-      json_request: '{"search_params": {"from": "LAX"}}',
-      request_time: "2026-06-20 10:35:20",
-      response_time: "2026-06-20 10:35:25",
-      action_status: "SUCCESS",
-      failure_reason: "",
-      log_time: "2026-06-20 10:35:26"
-    }
-  ]);
+  const [tableHeaders, setTableHeaders] = useState([]);
+  const [tableRows, setTableRows] = useState([]);
+  const [errorText, setErrorText] = useState("");
 
-  const showInProgress = () => setInProgress(true);
-  const hideInProgress = () => setInProgress(false);
-  const showGettingToken = () => setGettingToken(true);
-  const hideGettingToken = () => setGettingToken(false);
+  const parseDBAPIResponse = (value) => {
+    let parsed = value;
 
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    // Fetch action codes from JSON file when component mounts
-    const fetchActionCodes = async () => {
+    while (typeof parsed === "string") {
       try {
-        const response = await fetch("/data/requestPayload.json");
-        if (!response.ok) {
-          throw new Error("Failed to load action codes");
-        }
-        const data = await response.json();
-        // Sort action codes alphabetically by code before setting state
-        const sorted = Array.isArray(data)
-          ? data.slice().sort((a, b) => (a.code || "").localeCompare(b.code || ""))
-          : data;
-        setActionCodes(sorted);
-      } catch (error) {
-        console.error("Error fetching action codes:", error);
+        parsed = JSON.parse(parsed);
+      } catch {
+        parsed = JSON.parse(jsonrepair(parsed));
       }
-    };
-
-    fetchActionCodes();
-  }, []);
-
-  const handleEnvironmentStageChange = async (e) => {
-    const selectedStage = e.target.value;
-    setSelectedEnvironmentStage(selectedStage);
-
-    if (selectedStage == "S")
-      setGatewayApiUrl(process.env.NEXT_PUBLIC_DBAPI_STAG_URL);
-    else if (selectedStage == "P")
-      setGatewayApiUrl(process.env.NEXT_PUBLIC_DBAPI_PROD_URL);
-    else setGatewayApiUrl(process.env.NEXT_PUBLIC_DBAPI_DEV_URL);
-  };
-
-  const handleActionCodeChange = async (e) => {
-    const selectedCode = e.target.value;
-    setSelectedActionCode(selectedCode);
-
-    // Find selected action code data
-    const selectedAction = actionCodes.find(
-      (action) => action.code === selectedCode
-    );
-
-    if (selectedAction) {
-      setGatewayApiRequest(JSON.stringify(selectedAction.payload, null, 2));
-      setGatewayApiRequestNotes(selectedAction.notes);
     }
+
+    return parsed;
   };
 
-  const toggleResponseView = () => {
-    setShowRaw(!showRaw);
-    setGatewayApiResponseText(
-      showRaw ? beautifyJson(rawGatewayApiResponse) : rawGatewayApiResponse
-    );
-  };
-  const preprocessJson = (jsonString) => {
-    try {
-      return JSON.parse(jsonString); // Parse the raw escaped string into a JSON object
-    } catch (error) {
-      console.error("Error parsing raw JSON string:", error);
-      return jsonString; // Return as-is if parsing fails
-    }
-  };
-  const beautifyJson = (jsonString) => {
-    try {
-      // Handle non-string inputs
-      if (typeof jsonString !== 'string') {
-        jsonString = JSON.stringify(jsonString);
-      }
-      const unescapedJson =
-        selectedEnvironmentStage == "D"
-          ? preprocessJson(jsonString)
-          : jsonString;
-      return JSON.stringify(JSON.parse(unescapedJson), null, 2);
-    } catch (error) {
-      console.error("Error beautifying JSON:", error);
-      // Return as string regardless of input type
-      return typeof jsonString === 'string' ? jsonString : JSON.stringify(jsonString);
-    }
-  };
+ const formatCellValue = (cell) => {
+  if (cell === null || cell === undefined) return "";
 
-  const handleCopy = () => {
-    navigator.clipboard
-      .writeText(gatewayApiResponseText)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000); // Reset copied status after 2 seconds
-      })
-      .catch((err) => console.error("Failed to copy: ", err));
-  };
+  if (typeof cell === "object") {
+    return JSON.stringify(cell, null, 2);
+  }
 
-  const getAuthToken = async (e) => {
-    e.preventDefault();
-    showGettingToken();
-    try {
-      setInfoLabel("");
-      //Get an authentication token from Amazon Cognito
-      const cognitoToken = await getCognitoToken(username, password);
-      setAuthTokenId(cognitoToken);
-      setInfoLabel("New token generated.");
-    } catch (error) {
-      setAuthTokenId("Error:" + error.message);
-    } finally {
-      hideGettingToken();
-    }
-  };
+  return String(cell);
+};
+
+const getShortText = (value) => {
+  const text = formatCellValue(value);
+  const words = text.split(/\s+/);
+
+  if (words.length <= 5) return text;
+
+  return words.slice(0, 5).join(" ") + "...";
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate that a payload is provided
-    if (!gatewayApiRequest || gatewayApiRequest.trim() === "") {
-      setGatewayApiResponseStatus("Error");
-      setGatewayApiResponseText("Error: Please select an action code or provide a request payload");
+    if (!fromDate || !toDate || !limit) {
+      setResponseStatus("Error");
+      setErrorText("Please fill From Date, To Date, and Limit.");
+      setTableHeaders([]);
+      setTableRows([]);
       return;
     }
 
-    showInProgress();
+    setInProgress(true);
+    setResponseStatus("");
+    setErrorText("");
+    setTableHeaders([]);
+    setTableRows([]);
 
     try {
-      let info = "";
+      const payloadResponse = await fetch("/data/requestPayload.json");
+      const payloads = await payloadResponse.json();
 
-      // For DBAPI, we don't use authentication tokens, we send the request directly
-      const isDBAPI = gatewayApiUrl.includes("DBAPI");
-
-      // Step 2: Make a request to DBAPI or API Gateway
-      const apiResponse = await callApiGateway(
-        gatewayApiUrl,
-        gatewayApiRequest,
-        isDBAPI
+      const selectedPayload = payloads.find(
+        (item) => item.code === "S.DATABASE.LOGS"
       );
-      setGatewayApiResponseStatus(apiResponse.status);
-      setRawGatewayApiResponse(apiResponse.text); // Save raw response
-      setGatewayApiResponseText(beautifyJson(apiResponse.text)); // Save beautified response
 
-      const statusString = String(apiResponse.status);
-      if (statusString.includes("200"))
-        info += "API response received successfully.";
-
-      setInfoLabel(info);
-    } catch (error) {
-      setGatewayApiResponseStatus("Error");
-      let errorMsg = error.message || "Unknown error";
-      if (typeof errorMsg === 'object') {
-        errorMsg = JSON.stringify(errorMsg, null, 2);
+      if (!selectedPayload) {
+        throw new Error("S.DATABASE.LOGS payload not found.");
       }
-      setRawGatewayApiResponse(String(errorMsg));
-      setGatewayApiResponseText(String(errorMsg));
-    } finally {
-      hideInProgress();
-    }
-  };
 
-  const getCognitoToken = async (username, password) => {
-    const client = new CognitoIdentityProviderClient({
-      region: process.env.NEXT_PUBLIC_COGNITO_REGION,
-    });
+      const dbapiPayload = structuredClone(selectedPayload.payload);
 
-    const params = {
-      AuthFlow: "USER_PASSWORD_AUTH",
-      ClientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID,
-      AuthParameters: {
-        USERNAME: username,
-        PASSWORD: password,
-      },
-    };
+      dbapiPayload.JsonReq.JMetaData = {
+        ...dbapiPayload.JsonReq.JMetaData,
+        p_FROM_DATE: fromDate,
+        p_TO_DATE: toDate,
+        p_LIMIT: limit,
+      };
 
-    const command = new InitiateAuthCommand(params);
-    const response = await client.send(command);
+      dbapiPayload.JsonReq.JHeader = {
+        ...dbapiPayload.JsonReq.JHeader,
+        ViewName: dbapiPayload.ViewName,
+        ActionCode: dbapiPayload.ActionCode,
+        RequestedURL: process.env.NEXT_PUBLIC_DBAPI_DEV_URL,
+      };
 
-    if (!response.AuthenticationResult) {
-      throw new Error("Failed to fetch Cognito token");
-    }
+      const response = await axios.post("/api/dblogs", {
+        ...dbapiPayload,
+        dbapiUrl: process.env.NEXT_PUBLIC_DBAPI_DEV_URL,
+      });
 
-    return response.AuthenticationResult.IdToken;
-  };
+      setResponseStatus(response.data.status);
 
-  const callApiGateway = async (url, requestPayload, isDBAPI = false) => {
-    try {
-      let data;
-      let headers;
+      const parsedResponse = parseDBAPIResponse(response.data.text);
 
-      if (isDBAPI) {
-        // For DBAPI, use backend proxy at /api/dbapi
-        // Parse the JSON request payload to extract DBAPI fields
-        let dbapiPayload;
-        try {
-          dbapiPayload = typeof requestPayload === 'string' ? JSON.parse(requestPayload) : requestPayload;
-        } catch (e) {
-          // If payload can't be parsed, try to use it as default DBAPI payload
-          dbapiPayload = {
-            ActionCode: "SPAGESMENU",
-            ViewName: "VIEWPAGE",
-            ClientIP: "::1",
-            JsonReq: requestPayload,
-            Notes: "1"
-          };
+      const headings = parsedResponse?.JMetaData?.Headings || [];
+      const rows = parsedResponse?.JData || [];
+
+      const columns = headings.map((heading, index) => ({
+        key: heading[0],
+        label: heading[1],
+        index,
+      }));
+
+      const normalizedRows = rows.map((row) => {
+        const fixedRow = [...row];
+
+        if (
+          !fixedRow[12] &&
+          fixedRow[13] &&
+          typeof fixedRow[13] === "object"
+        ) {
+          fixedRow[12] = fixedRow[13];
+          fixedRow[13] = "";
         }
 
-        // Create request for backend proxy - always use correct JsonReq structure per developer spec
-        // Extract JData from the selected payload if it exists
-        const jData = dbapiPayload.JsonReq?.JData || {};
-        const jMetaData = dbapiPayload.JsonReq?.JMetaData || {};
-        const jHeader = dbapiPayload.JsonReq?.JHeader || {};
+        return fixedRow;
+      });
 
-        data = {
-          ActionCode: dbapiPayload.ActionCode || 'SPAGESMENU',
-          ViewName: dbapiPayload.ViewName || dbapiPayload.PageName || 'VIEWPAGE',
-          ClientIP: dbapiPayload.ClientIP || '::1',
-          JsonReq: {
-            JHeader: {
-              ...jHeader, // Use the JHeader from payload (which has APILogin, APIPassword, etc.)
-              ViewName: dbapiPayload.ViewName || dbapiPayload.PageName || jHeader.ViewName || "VIEWPAGE",
-              ActionCode: dbapiPayload.ActionCode || jHeader.ActionCode || "SPAGESMENU",
-              RequestedURL: url,
-            },
-            JMetaData: jMetaData,
-            JData: jData,
-          },
-          Notes: dbapiPayload.Notes || "1",
-          dbapiUrl: url, // Pass the original URL
-        };
+      setTableHeaders(columns);
+      setTableRows(normalizedRows);
 
-        headers = {
-          "Content-Type": "application/json",
-        };
-
-        // Log what we're sending
-        console.log("Frontend sending to /api/dbapi:", data);
-
-        // Call backend proxy instead of DBAPI directly
-        const response = await axios.post("/api/dbapi", data, {
-          headers: headers,
-          responseType: "json",
-        });
-
-        return response.data; // Backend returns { status, text, success }
-      } else {
-        // Format request for API Gateway (JSON)
-        data = requestPayload;
-        headers = {
-          "Content-Type": "application/json",
-        };
-
-        const response = await axios.post(url, data, {
-          headers: headers,
-          responseType: "text",
-        });
-
-        return {
-          status: `${response.status} ${response.statusText}`,
-          text: response.data,
-        };
+      if (rows.length === 0) {
+        setErrorText("No records found.");
       }
     } catch (error) {
-      console.error(
-        "Error details:",
-        error.response ? error.response.data : error.message
-      );
-      let errMsg = error.response ? error.response.data : error.message;
-      // Ensure errMsg is always a string
-      if (typeof errMsg === 'object') {
-        errMsg = JSON.stringify(errMsg, null, 2);
-      }
-      return {
-        status: `${error.response?.status || "Error"}`,
-        text: String(errMsg),
-      };
+      setResponseStatus("Error");
+      setErrorText(error.message || "Something went wrong.");
+      setTableHeaders([]);
+      setTableRows([]);
+    } finally {
+      setInProgress(false);
     }
   };
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.heading}>Database Logs</h1>
+      <h1 className={styles.heading}>Database Logs Viewer</h1>
+
       <div className={styles.lblLink}>
-        <a href="/">Gateway API</a>
-        <Link href="/flights">FlightView API</Link>
+        <Link href="/">DBAPI</Link>
+        <Link href="/flights">Flightview API</Link>
       </div>
+
       <form onSubmit={handleSubmit} className={styles.form}>
-        <div className={styles.formGroup}>
-          <label className={styles.infolabel}>{infoLabel}</label>
+        <div className={styles.filterRow}>
+          <div className={styles.field}>
+            <label className={styles.label}>From Date</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>To Date</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Limit</label>
+            <input
+              type="number"
+              value={limit}
+              onChange={(e) => setLimit(e.target.value)}
+              className={styles.input}
+              min="1"
+            />
+          </div>
+
+          <div className={styles.buttonWrapper}>
+            <button type="submit" className={styles.submitButton}>
+              {inProgress ? "Loading..." : "Fetch Database Logs"}
+            </button>
+          </div>
         </div>
 
         <div className={styles.formGroup}>
-          <label htmlFor="environmentStage" className={styles.label}>
-            Environment Stage
-          </label>
-          <select
-            id="environmentStage"
-            name="environmentStage"
-            value={selectedEnvironmentStage}
-            onChange={handleEnvironmentStageChange}
-            className={`${styles.input} ${styles.longInput}`}
-          >
-            <option value="D">Development</option>
-            <option value="S">Staging</option>
-          </select>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="txtGatewayAPIURL" className={styles.label}>
-            Gateway API URL
-          </label>
+          <label className={styles.label}>Response Status</label>
           <input
             type="text"
-            id="txtGatewayAPIURL"
-            name="txtGatewayAPIURL"
-            value={gatewayApiUrl}
-            onChange={(e) => setGatewayApiUrl(e.target.value)}
-            className={`${styles.input} ${styles.longInput}`}
-          />
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="actionCode" className={styles.label}>
-            Gateway API Request Action Code
-          </label>
-          <select
-            id="actionCode"
-            name="actionCode"
-            value={selectedActionCode}
-            onChange={handleActionCodeChange}
-            className={`${styles.input} ${styles.longInput}`}
-          >
-            <option value="">Select Action Code</option>
-            {actionCodes
-              .filter((action) => action.code === "S.DATABASE.LOGS")
-              .map((action) => (
-                <option key={action.code} value={action.code}>
-                  {action.code}
-                  {" ( "}
-                  {action.desc}
-                  {" )"}
-                </option>
-              ))}
-          </select>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="txtGatewayAPIRequest" className={styles.label}>
-            Gateway API Request Payload
-          </label>
-          <textarea
-            id="txtGatewayAPIRequest"
-            name="txtGatewayAPIRequest"
-            value={gatewayApiRequest}
-            onChange={(e) => setGatewayApiRequest(e.target.value)}
-            className={styles.textArea}
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label htmlFor="txtGatewayAPIRequest" className={styles.label}>
-            Gateway API Call Notes
-          </label>
-          <textarea
-            id="txtGatewayAPIRequestNotes"
-            name="txtGatewayAPIRequestNotes"
-            value={gatewayApiRequestNotes}
-            onChange={(e) => setGatewayApiRequestNotes(e.target.value)}
-            className={styles.textAreaSmall}
-          />
-        </div>
-        <div className={styles.formGroup}>
-          <label htmlFor="txtGatewayAPIResponseStatus" className={styles.label}>
-            Gateway API Response Status
-          </label>
-          <input
-            type="text"
-            id="txtGatewayAPIResponseStatus"
-            name="txtGatewayAPIResponseStatus"
-            value={gatewayApiResponseStatus}
+            value={responseStatus}
             readOnly
             className={`${styles.input} ${styles.readOnlyInput}`}
           />
         </div>
-        <div className={styles.formGroup}>
-          <label htmlFor="responsesTable" className={styles.label}>
-            Database Logs Response
-          </label>
-          <div style={{ overflowX: "auto", marginTop: "10px" }}>
-            <table style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              border: "1px solid #ddd",
-              fontSize: "12px"
-            }}>
+
+        {errorText && (
+          <div className={styles.formGroup}>
+            <pre>
+              <code className={styles.codeWrap}>{errorText}</code>
+            </pre>
+          </div>
+        )}
+
+        {tableRows.length > 0 && (
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
               <thead>
-                <tr style={{ backgroundColor: "#f2f2f2" }}>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>row_id</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>logging_object</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>from_app_name</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>action_code</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>client_ip</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>Latitude</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>Longitude</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>user_id</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>trip_number</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>device_info</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>json_request</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>request_time</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>response_time</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>action_status</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>failure_reason</th>
-                  <th style={{ border: "1px solid #ddd", padding: "8px", textAlign: "left" }}>log_time</th>
+                <tr>
+                  {tableHeaders.map((column) => (
+                    <th key={column.key}>
+                      {column.label}
+                    </th>
+                  ))}
                 </tr>
               </thead>
+
               <tbody>
-                {tableData.length > 0 ? (
-                  tableData.map((row, index) => (
-                    <tr key={index}>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.row_id}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.logging_object}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.from_app_name}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.action_code}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.client_ip}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.latitude}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.longitude}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.user_id}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.trip_number}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.device_info}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px", maxWidth: "200px", wordBreak: "break-word" }}>{row.json_request}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.request_time}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.response_time}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.action_status}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.failure_reason}</td>
-                      <td style={{ border: "1px solid #ddd", padding: "8px" }}>{row.log_time}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="16" style={{ border: "1px solid #ddd", padding: "8px", textAlign: "center" }}>
-                      No data available. Make an API request to load logs.
-                    </td>
+                {tableRows.map((row, rowIndex) => (
+                  <tr key={rowIndex}>
+                    {tableHeaders.map((column) => (
+                     <td key={`${rowIndex}-${column.key}`}>
+  {column.key === "PARAMS" && row[column.index] ? (
+    <>
+      <span>{getShortText(row[column.index])}</span>
+      <button
+        type="button"
+        className={styles.seeMoreButton}
+        onClick={() => {
+          setModalContent(formatCellValue(row[column.index]));
+          setShowModal(true);
+        }}
+      >
+        See more
+      </button>
+    </>
+  ) : (
+    formatCellValue(row[column.index])
+  )}
+</td>
+                    ))}
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
-        </div>
-        <div className={styles.formGroup}>
-          <button
-            type="submit"
-            name="btnSubmit"
-            className={styles.submitButton}
-          >
-            {inProgress ? "Making Request..." : "Make API Request"}
-          </button>
-        </div>
-        <div className={styles.lblLink}>
-          <Link href="mailto:kazimbukhari@gmail.com">Report Issues</Link>
-        </div>
+        )}
       </form>
+      {showModal && (
+  <div className={styles.modalOverlay}>
+    <div className={styles.modalBox}>
+      <div className={styles.modalHeader}>
+        <h3>Params Details</h3>
+        <button
+          type="button"
+          className={styles.closeButton}
+          onClick={() => setShowModal(false)}
+        >
+          ×
+        </button>
+      </div>
+
+      <pre className={styles.modalContent}>{modalContent}</pre>
+    </div>
+  </div>
+)}
     </div>
   );
 };
 
-export default GatewayApiTest;
+export default DatabaseViewer;

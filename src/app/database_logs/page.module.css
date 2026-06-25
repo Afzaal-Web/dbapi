@@ -72,7 +72,6 @@
   border-radius: 4px;
   cursor: pointer;
   text-align: center;
-  margin-bottom: 25px;
 }
 
 .submitButton:hover {
@@ -80,7 +79,7 @@
 }
 
 .lblLink {
-  margin-bottom: 10px;
+  margin-bottom: 35px;
   font-size: small;
   text-decoration: underline;
   color: red;
@@ -140,7 +139,6 @@
 }
 
 .clearButton {
-
   padding: 10px 15px;
   background-color: #0070f3;
   color: #fff;
@@ -151,3 +149,117 @@
   margin-bottom: 25px;
 }
 
+.filterRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.field {
+  flex: 1;
+}
+
+.buttonWrapper {
+  display: flex;
+  align-items: flex-end;
+}
+
+.buttonWrapper .submitButton {
+  height: 42px;
+  white-space: nowrap;
+}
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 20px;
+  border: 1px solid #ddd;
+}
+
+.table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table th,
+.table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.table th {
+  background: #1e3a8a;
+  color: white;
+  font-weight: 600;
+}
+
+.table td {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table td:nth-child(13),
+.table td:nth-child(14) {
+  white-space: pre-wrap;
+  max-width: 450px;
+}
+.seeMoreButton {
+  margin-left: 8px;
+  border: none;
+  background: none;
+  color: #1e3a8a;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.modalBox {
+  background: #fff;
+  width: 80%;
+  max-width: 900px;
+  max-height: 80vh;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.modalHeader {
+  padding: 14px 18px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.closeButton {
+  border: none;
+  background: none;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.modalContent {
+  padding: 18px;
+  margin: 0;
+  max-height: 65vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: Consolas, monospace;
+  font-size: 13px;
+}
