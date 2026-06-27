@@ -170,6 +170,16 @@
   height: 42px;
   white-space: nowrap;
 }
+
+@media (max-width: 768px) {
+
+   .field {
+    width: 100%;
+    flex: none;
+  }
+}
+
+
 .tableContainer {
   width: 100%;
   overflow-x: auto;
@@ -199,7 +209,7 @@
 }
 
 .table td {
-  max-width: 300px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -262,4 +272,67 @@
   white-space: pre-wrap;
   font-family: Consolas, monospace;
   font-size: 13px;
+}
+
+.paramsPreview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.previewText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.seeMoreButton {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:hover {
+  background: #eef5ff;
+}
+
+.detailsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.detailCard {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.detailCard strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #1e3a8a;
+}
+
+.detailCard pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: Consolas, monospace;
+  font-size: 13px;
+}
+.datePickerWrapper {
+  width: 100%;
 }

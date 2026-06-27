@@ -11,11 +11,13 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.620.0",
     "axios": "^1.7.2",
+    "date-fns": "^4.4.0",
     "fast-xml-parser": "^5.9.3",
     "jsonrepair": "^3.14.1",
     "mysql2": "^3.22.5",
     "next": "14.2.5",
     "react": "^18",
+    "react-datepicker": "^9.1.0",
     "react-dom": "^18"
   },
   "devDependencies": {
