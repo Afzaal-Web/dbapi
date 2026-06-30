@@ -13,6 +13,7 @@ import { format } from "date-fns";
 
 const DatabaseViewer = () => {
   const router = useRouter();
+
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
@@ -20,7 +21,6 @@ const DatabaseViewer = () => {
   const [selectedActionCode, setSelectedActionCode] = useState("ALL");
   const [fromDate, setFromDate] = useState(yesterday);
   const [toDate, setToDate] = useState(today);
-
   const [limit, setLimit] = useState("25");
 
   const [actionCodes, setActionCodes] = useState([]);
@@ -36,20 +36,22 @@ const DatabaseViewer = () => {
   const [errorText, setErrorText] = useState("");
 
   useEffect(() => {
-    // Fetch action codes from JSON file when component mounts
     const fetchActionCodes = async () => {
       try {
         const response = await fetch("/data/requestPayload.json");
+
         if (!response.ok) {
           throw new Error("Failed to load action codes");
         }
+
         const data = await response.json();
-        // Sort action codes alphabetically by code before setting state
+
         const sorted = Array.isArray(data)
           ? data
               .slice()
               .sort((a, b) => (a.code || "").localeCompare(b.code || ""))
           : data;
+
         setActionCodes(sorted);
       } catch (error) {
         console.error("Error fetching action codes:", error);
@@ -59,7 +61,7 @@ const DatabaseViewer = () => {
     fetchActionCodes();
   }, []);
 
-  const handleActionCodeChange = async (e) => {
+  const handleActionCodeChange = (e) => {
     setSelectedActionCode(e.target.value);
   };
 
@@ -87,15 +89,6 @@ const DatabaseViewer = () => {
     return String(cell);
   };
 
-  const getShortText = (value) => {
-    const text = formatCellValue(value);
-    const words = text.split(/\s+/);
-
-    if (words.length <= 5) return text;
-
-    return words.slice(0, 5).join(" ") + "...";
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -106,6 +99,7 @@ const DatabaseViewer = () => {
       setTableRows([]);
       return;
     }
+
     if (!selectedActionCode) {
       setResponseStatus("Error");
       setErrorText("Please select an Action Code.");
@@ -123,7 +117,7 @@ const DatabaseViewer = () => {
       const payloads = await payloadResponse.json();
 
       const selectedPayload = payloads.find(
-        (item) => item.code === "S.DATABASE.LOGS",
+        (item) => item.code === "S.DATABASE.LOGS"
       );
 
       if (!selectedPayload) {
@@ -150,7 +144,7 @@ const DatabaseViewer = () => {
         ActionCode: dbapiPayload.ActionCode,
         RequestedURL: process.env.NEXT_PUBLIC_DBAPI_DEV_URL,
       };
-      console.log(dbapiPayload);
+
       const response = await axios.post("/api/dblogs", {
         ...dbapiPayload,
         dbapiUrl: process.env.NEXT_PUBLIC_DBAPI_DEV_URL,
@@ -159,7 +153,7 @@ const DatabaseViewer = () => {
       setResponseStatus(response.data.status);
 
       const parsedResponse = parseDBAPIResponse(response.data.text);
-      console.log(parsedResponse);
+
       const headings = parsedResponse?.JMetaData?.Headings || [];
       const rows = parsedResponse?.JData || [];
 
@@ -178,8 +172,9 @@ const DatabaseViewer = () => {
       ];
 
       const visibleColumns = allColumns.filter((column) =>
-        visibleColumnKeys.includes(column.key),
+        visibleColumnKeys.includes(column.key)
       );
+
       const normalizedRows = rows.map((row) => {
         const fixedRow = [...row];
 
@@ -207,6 +202,7 @@ const DatabaseViewer = () => {
       setInProgress(false);
     }
   };
+
   const handleRowClick = (row) => {
     const logId = row[0];
 
@@ -215,11 +211,12 @@ const DatabaseViewer = () => {
       JSON.stringify({
         columns: allTableHeaders,
         row,
-      }),
+      })
     );
 
     router.push(`/database_logs/${logId}`);
   };
+
   return (
     <div className={styles.container}>
       <h1 className={styles.heading}>Database Logs Viewer</h1>
@@ -233,6 +230,7 @@ const DatabaseViewer = () => {
         <div className={styles.filterRow}>
           <div className={styles.field}>
             <label className={styles.label}>Select Action Code</label>
+
             <select
               id="actionCode"
               name="actionCode"
@@ -241,6 +239,7 @@ const DatabaseViewer = () => {
               className={`${styles.input} ${styles.longInput}`}
             >
               <option value="ALL">All</option>
+
               {actionCodes.map((action) => (
                 <option key={action.code} value={action.code}>
                   {action.code}
@@ -251,6 +250,7 @@ const DatabaseViewer = () => {
 
           <div className={styles.field}>
             <label className={styles.label}>From Date</label>
+
             <DatePicker
               selected={fromDate}
               onChange={(date) => setFromDate(date)}
@@ -262,6 +262,7 @@ const DatabaseViewer = () => {
 
           <div className={styles.field}>
             <label className={styles.label}>To Date</label>
+
             <DatePicker
               selected={toDate}
               onChange={(date) => setToDate(date)}
@@ -273,6 +274,7 @@ const DatabaseViewer = () => {
 
           <div className={styles.field}>
             <label className={styles.label}>Limit</label>
+
             <input
               type="number"
               value={limit}
@@ -291,6 +293,7 @@ const DatabaseViewer = () => {
 
         <div className={styles.formGroup}>
           <label className={styles.label}>Response Status</label>
+
           <input
             type="text"
             value={responseStatus}
@@ -327,7 +330,29 @@ const DatabaseViewer = () => {
                   >
                     {tableHeaders.map((column) => (
                       <td key={`${rowIndex}-${column.key}`}>
-                        column.key === "PARAMS"
+                        {column.key === "PARAMS" && row[column.index] ? (
+                          <div className={styles.paramsPreview}>
+                            <span className={styles.previewText}>
+                              {formatCellValue(row[column.index])}
+                            </span>
+
+                            <button
+                              type="button"
+                              className={styles.seeMoreButton}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setModalContent(
+                                  formatCellValue(row[column.index])
+                                );
+                                setShowModal(true);
+                              }}
+                            >
+                              See more
+                            </button>
+                          </div>
+                        ) : (
+                          formatCellValue(row[column.index])
+                        )}
                       </td>
                     ))}
                   </tr>
@@ -337,11 +362,13 @@ const DatabaseViewer = () => {
           </div>
         )}
       </form>
+
       {showModal && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalBox}>
             <div className={styles.modalHeader}>
               <h3>Params Details</h3>
+
               <button
                 type="button"
                 className={styles.closeButton}
