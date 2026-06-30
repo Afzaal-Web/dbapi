@@ -61,10 +61,6 @@ const DatabaseViewer = () => {
     fetchActionCodes();
   }, []);
 
-  const handleActionCodeChange = (e) => {
-    setSelectedActionCode(e.target.value);
-  };
-
   const parseDBAPIResponse = (value) => {
     let parsed = value;
 
@@ -243,7 +239,7 @@ const DatabaseViewer = () => {
               id="actionCode"
               name="actionCode"
               value={selectedActionCode}
-              onChange={handleActionCodeChange}
+              onChange={(e) => setSelectedActionCode(e.target.value)}
               className={`${styles.input} ${styles.longInput}`}
             >
               <option value="ALL">All</option>
