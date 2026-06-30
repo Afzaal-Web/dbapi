@@ -327,29 +327,7 @@ const DatabaseViewer = () => {
                   >
                     {tableHeaders.map((column) => (
                       <td key={`${rowIndex}-${column.key}`}>
-                        {column.key === "PARAMS" && row[column.index] ? (
-                          <div className={styles.paramsPreview}>
-                            <span className={styles.previewText}>
-                              {formatCellValue(row[column.index])}
-                            </span>
-
-                            <button
-                              type="button"
-                              className={styles.seeMoreButton}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setModalContent(
-                                  formatCellValue(row[column.index]),
-                                );
-                                setShowModal(true);
-                              }}
-                            >
-                              See more
-                            </button>
-                          </div>
-                        ) : (
-                          formatCellValue(row[column.index])
-                        )}
+                        column.key === "PARAMS"
                       </td>
                     ))}
                   </tr>
