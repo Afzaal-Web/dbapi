@@ -48,8 +48,8 @@ const DatabaseViewer = () => {
 
         const sorted = Array.isArray(data)
           ? data
-              .slice()
-              .sort((a, b) => (a.code || "").localeCompare(b.code || ""))
+            .slice()
+            .sort((a, b) => (a.code || "").localeCompare(b.code || ""))
           : data;
 
         setActionCodes(sorted);
@@ -60,6 +60,10 @@ const DatabaseViewer = () => {
 
     fetchActionCodes();
   }, []);
+
+  const handleActionCodeChange = (e) => {
+    setSelectedActionCode(e.target.value);
+  };
 
   const parseDBAPIResponse = (value) => {
     let parsed = value;
@@ -76,22 +80,13 @@ const DatabaseViewer = () => {
   };
 
   const formatCellValue = (cell) => {
-    if (cell === null || cell === undefined || cell === "") return "";
+    if (cell === null || cell === undefined) return "";
 
     if (typeof cell === "object") {
       return JSON.stringify(cell, null, 2);
     }
 
     return String(cell);
-  };
-
-  const getShortText = (value) => {
-    const text = formatCellValue(value);
-    const words = text.split(/\s+/);
-
-    if (words.length <= 5) return text;
-
-    return words.slice(0, 5).join(" ") + "...";
   };
 
   const handleSubmit = async (e) => {
@@ -180,21 +175,22 @@ const DatabaseViewer = () => {
         visibleColumnKeys.includes(column.key)
       );
 
-      const objectRows = rows.map((row) => {
-        const obj = {};
+      const normalizedRows = rows.map((row) => {
+        const fixedRow = [...row];
 
-        allColumns.forEach((column) => {
-          obj[column.key] = row[column.index] ?? "";
-        });
+        if (!fixedRow[12] && fixedRow[13] && typeof fixedRow[13] === "object") {
+          fixedRow[12] = fixedRow[13];
+          fixedRow[13] = "";
+        }
 
-        return obj;
+        return fixedRow;
       });
 
       setAllTableHeaders(allColumns);
       setTableHeaders(visibleColumns);
-      setTableRows(objectRows);
+      setTableRows(normalizedRows);
 
-      if (objectRows.length === 0) {
+      if (rows.length === 0) {
         setErrorText("No records found.");
       }
     } catch (error) {
@@ -208,7 +204,7 @@ const DatabaseViewer = () => {
   };
 
   const handleRowClick = (row) => {
-    const logId = row.LOG_ID;
+    const logId = row[0];
 
     localStorage.setItem(
       "selectedLogDetails",
@@ -239,7 +235,7 @@ const DatabaseViewer = () => {
               id="actionCode"
               name="actionCode"
               value={selectedActionCode}
-              onChange={(e) => setSelectedActionCode(e.target.value)}
+              onChange={handleActionCodeChange}
               className={`${styles.input} ${styles.longInput}`}
             >
               <option value="ALL">All</option>
@@ -334,11 +330,10 @@ const DatabaseViewer = () => {
                   >
                     {tableHeaders.map((column) => (
                       <td key={`${rowIndex}-${column.key}`}>
-                        {["PARAMS", "RESPONSE"].includes(column.key) &&
-                        row[column.key] ? (
+                        {column.key === "PARAMS" && row[column.index] ? (
                           <div className={styles.paramsPreview}>
                             <span className={styles.previewText}>
-                              {getShortText(row[column.key])}
+                              {formatCellValue(row[column.index])}
                             </span>
 
                             <button
@@ -347,7 +342,7 @@ const DatabaseViewer = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setModalContent(
-                                  formatCellValue(row[column.key])
+                                  formatCellValue(row[column.index])
                                 );
                                 setShowModal(true);
                               }}
@@ -356,7 +351,7 @@ const DatabaseViewer = () => {
                             </button>
                           </div>
                         ) : (
-                          formatCellValue(row[column.key])
+                          formatCellValue(row[column.index])
                         )}
                       </td>
                     ))}
@@ -372,7 +367,7 @@ const DatabaseViewer = () => {
         <div className={styles.modalOverlay}>
           <div className={styles.modalBox}>
             <div className={styles.modalHeader}>
-              <h3>Details</h3>
+              <h3>Params Details</h3>
 
               <button
                 type="button"
