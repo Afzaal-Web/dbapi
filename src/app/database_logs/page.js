@@ -80,7 +80,7 @@ const DatabaseViewer = () => {
   };
 
   const formatCellValue = (cell) => {
-    if (cell === null || cell === undefined) return "";
+    if (cell === null || cell === undefined || cell === "") return "";
 
     if (typeof cell === "object") {
       return JSON.stringify(cell, null, 2);
@@ -184,11 +184,21 @@ const DatabaseViewer = () => {
         visibleColumnKeys.includes(column.key)
       );
 
+      const objectRows = rows.map((row) => {
+        const obj = {};
+
+        allColumns.forEach((column) => {
+          obj[column.key] = row[column.index] ?? "";
+        });
+
+        return obj;
+      });
+
       setAllTableHeaders(allColumns);
       setTableHeaders(visibleColumns);
-      setTableRows(rows);
+      setTableRows(objectRows);
 
-      if (rows.length === 0) {
+      if (objectRows.length === 0) {
         setErrorText("No records found.");
       }
     } catch (error) {
@@ -202,7 +212,7 @@ const DatabaseViewer = () => {
   };
 
   const handleRowClick = (row) => {
-    const logId = row[0];
+    const logId = row.LOG_ID;
 
     localStorage.setItem(
       "selectedLogDetails",
@@ -329,10 +339,10 @@ const DatabaseViewer = () => {
                     {tableHeaders.map((column) => (
                       <td key={`${rowIndex}-${column.key}`}>
                         {["PARAMS", "RESPONSE"].includes(column.key) &&
-                        row[column.index] ? (
+                        row[column.key] ? (
                           <div className={styles.paramsPreview}>
                             <span className={styles.previewText}>
-                              {getShortText(row[column.index])}
+                              {getShortText(row[column.key])}
                             </span>
 
                             <button
@@ -341,7 +351,7 @@ const DatabaseViewer = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setModalContent(
-                                  formatCellValue(row[column.index])
+                                  formatCellValue(row[column.key])
                                 );
                                 setShowModal(true);
                               }}
@@ -350,7 +360,7 @@ const DatabaseViewer = () => {
                             </button>
                           </div>
                         ) : (
-                          formatCellValue(row[column.index])
+                          formatCellValue(row[column.key])
                         )}
                       </td>
                     ))}
