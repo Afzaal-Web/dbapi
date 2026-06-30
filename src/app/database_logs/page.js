@@ -89,6 +89,15 @@ const DatabaseViewer = () => {
     return String(cell);
   };
 
+  const getShortText = (value) => {
+    const text = formatCellValue(value);
+    const words = text.split(/\s+/);
+
+    if (words.length <= 5) return text;
+
+    return words.slice(0, 5).join(" ") + "...";
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -175,20 +184,9 @@ const DatabaseViewer = () => {
         visibleColumnKeys.includes(column.key)
       );
 
-      const normalizedRows = rows.map((row) => {
-        const fixedRow = [...row];
-
-        if (!fixedRow[12] && fixedRow[13] && typeof fixedRow[13] === "object") {
-          fixedRow[12] = fixedRow[13];
-          fixedRow[13] = "";
-        }
-
-        return fixedRow;
-      });
-
       setAllTableHeaders(allColumns);
       setTableHeaders(visibleColumns);
-      setTableRows(normalizedRows);
+      setTableRows(rows);
 
       if (rows.length === 0) {
         setErrorText("No records found.");
@@ -330,10 +328,11 @@ const DatabaseViewer = () => {
                   >
                     {tableHeaders.map((column) => (
                       <td key={`${rowIndex}-${column.key}`}>
-                        {column.key === "PARAMS" && row[column.index] ? (
+                        {["PARAMS", "RESPONSE"].includes(column.key) &&
+                        row[column.index] ? (
                           <div className={styles.paramsPreview}>
                             <span className={styles.previewText}>
-                              {formatCellValue(row[column.index])}
+                              {getShortText(row[column.index])}
                             </span>
 
                             <button
@@ -367,7 +366,7 @@ const DatabaseViewer = () => {
         <div className={styles.modalOverlay}>
           <div className={styles.modalBox}>
             <div className={styles.modalHeader}>
-              <h3>Params Details</h3>
+              <h3>Details</h3>
 
               <button
                 type="button"
